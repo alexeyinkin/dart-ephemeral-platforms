@@ -45,6 +45,15 @@ create the file `ephemeral_platforms.yaml`:
 
 ```yaml
 platforms:
+
+  android:
+    permissions:
+      android.permission.BLUETOOTH: true
+      android.permission.BLUETOOTH_SCAN:
+        android:usesPermissionFlags: neverForLocation
+    features:
+      android.hardware.bluetooth: true
+
   macos:
     entitlements:
       com.apple.security.device.serial: true

@@ -1,6 +1,6 @@
 name: ephemeral_platforms
 description: Re-creates the platform directories and applies modifications from your config.
-version: 0.1.0
+version: 0.1.1
 repository: https://github.com/alexeyinkin/dart-ephemeral-platforms
 
 environment:
