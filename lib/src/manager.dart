@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
+import 'modifiers/android/feature.dart';
+import 'modifiers/android/permission.dart';
 import 'modifiers/macos/entitlements.dart';
 import 'modifiers/modifier.dart';
 
@@ -96,10 +98,12 @@ class EphemeralPlatformsManager {
       for (final platform in enabledPlatforms) {
         final platformConfig = platformsConfig[platform];
         if (platformConfig is YamlMap) {
-          if (platform == 'macos') {
-            modifiers.addAll(_parseMacOsModifiers(platformConfig));
+          switch (platform) {
+            case 'android':
+              modifiers.addAll(_parseAndroidModifiers(platformConfig));
+            case 'macos':
+              modifiers.addAll(_parseMacOsModifiers(platformConfig));
           }
-          // Additional platform handlers can be added here
         }
       }
     }
@@ -113,6 +117,72 @@ class EphemeralPlatformsManager {
       final entitlements = platformConfig['entitlements'];
       if (entitlements is YamlMap) {
         modifiers.addAll(_parseMacOsEntitlements(entitlements));
+      }
+    }
+    return modifiers;
+  }
+
+  List<Modifier> _parseAndroidModifiers(YamlMap platformConfig) {
+    final modifiers = <Modifier>[];
+
+    if (platformConfig.containsKey('permissions')) {
+      final permissions = platformConfig['permissions'];
+      if (permissions is YamlMap) {
+        modifiers.addAll(_parseAndroidPermissions(permissions));
+      }
+    }
+
+    if (platformConfig.containsKey('features')) {
+      final features = platformConfig['features'];
+      if (features is YamlMap) {
+        modifiers.addAll(_parseAndroidFeatures(features));
+      }
+    }
+
+    return modifiers;
+  }
+
+  List<Modifier> _parseAndroidPermissions(YamlMap permissions) {
+    final modifiers = <Modifier>[];
+    for (final entry in permissions.entries) {
+      final name = entry.key.toString();
+      final value = entry.value;
+
+      switch (value) {
+        case true:
+        case null:
+          modifiers.add(AndroidPermissionModifier(name));
+        case YamlMap map:
+          final attributes = <String, String>{};
+          for (final attr in map.entries) {
+            attributes[attr.key.toString()] = attr.value.toString();
+          }
+          modifiers.add(
+            AndroidPermissionModifier(name, attributes: attributes),
+          );
+      }
+    }
+    return modifiers;
+  }
+
+  List<Modifier> _parseAndroidFeatures(YamlMap features) {
+    final modifiers = <Modifier>[];
+    for (final entry in features.entries) {
+      final name = entry.key.toString();
+      final value = entry.value;
+
+      switch (value) {
+        case true:
+        case null:
+          modifiers.add(AndroidFeatureModifier(name));
+        case YamlMap map:
+          final requiredFlag = map['required'];
+          modifiers.add(
+            AndroidFeatureModifier(
+              name,
+              required: requiredFlag is bool ? requiredFlag : null,
+            ),
+          );
       }
     }
     return modifiers;

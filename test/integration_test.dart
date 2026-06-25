@@ -16,9 +16,9 @@ void main() {
       );
 
       // Create a dummy flutter project
-      await Shell(
-        workingDirectory: tempDir.path,
-      ).run('flutter create . --platforms macos --project-name dummy_app');
+      await Shell(workingDirectory: tempDir.path).run(
+        'flutter create . --platforms macos,android --project-name dummy_app',
+      );
 
       // Add ephemeral_platforms.yaml
       final yamlContent = '''
@@ -31,6 +31,14 @@ ephemeral_platforms:
       entitlements:
         com.apple.security.device.serial: true
         com.apple.security.network.server: false
+    android:
+      enabled: true
+      permissions:
+        android.permission.BLUETOOTH: true
+        android.permission.BLUETOOTH_SCAN:
+          android:usesPermissionFlags: neverForLocation
+      features:
+        android.hardware.bluetooth: true
 ''';
       await File(
         p.join(tempDir.path, 'ephemeral_platforms.yaml'),
@@ -68,9 +76,7 @@ ephemeral_platforms:
       final shell = Shell(workingDirectory: tempDir.path);
 
       // Run the package CLI via dart run
-      await shell.run(
-        'dart run ${p.join(packagePath, 'bin', 'apply.dart')}',
-      );
+      await shell.run('dart run ${p.join(packagePath, 'bin', 'apply.dart')}');
 
       // Verify the untracked dummy file was deleted
       final dummyFile = File(
@@ -110,6 +116,36 @@ ephemeral_platforms:
         content,
         contains('<true/>'),
         reason: 'Device serial should be set to true',
+      );
+
+      // Verify android manifest is modified
+      final manifestFile = File(
+        p.join(
+          tempDir.path,
+          'android',
+          'app',
+          'src',
+          'main',
+          'AndroidManifest.xml',
+        ),
+      );
+      final manifestContent = await manifestFile.readAsString();
+
+      expect(
+        manifestContent,
+        contains(
+          '<uses-permission android:name="android.permission.BLUETOOTH"/>',
+        ),
+      );
+      expect(
+        manifestContent,
+        contains(
+          '<uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation"/>',
+        ),
+      );
+      expect(
+        manifestContent,
+        contains('<uses-feature android:name="android.hardware.bluetooth"/>'),
       );
     });
   });
